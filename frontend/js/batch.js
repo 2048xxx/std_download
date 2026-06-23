@@ -21,6 +21,26 @@
   let parsedMeta = null;
   let previewMap = new Map();
 
+  const FETCH_TIMEOUT_MS = 30 * 60 * 1000;
+
+  function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const { signal: outerSignal, ...rest } = options;
+    if (outerSignal) {
+      if (outerSignal.aborted) controller.abort();
+      else outerSignal.addEventListener("abort", () => controller.abort(), { once: true });
+    }
+    return fetch(url, { ...rest, signal: controller.signal }).finally(() => clearTimeout(timer));
+  }
+
+  function fetchErrorMessage(e, fallback) {
+    if (e?.name === "AbortError") {
+      return "请求超时。请减少批量条数、关闭「扫描磁盘」，或稍后重试。";
+    }
+    return e?.message || fallback || "未知错误";
+  }
+
   function escapeHtml(s) {
     const d = document.createElement("div");
     d.textContent = s || "";
@@ -127,7 +147,7 @@
     const fd = new FormData();
     fd.append("file", file);
     try {
-      const res = await fetch("/api/batch/parse", { method: "POST", body: fd });
+      const res = await fetchWithTimeout("/api/batch/parse", { method: "POST", body: fd }, 120000);
       const data = await res.json();
       if (!data.ok) {
         setFeedback(`<div class="alert">${escapeHtml(data.error || "解析失败")}</div>`);
@@ -148,7 +168,7 @@
       if (btnBatchPreview) btnBatchPreview.disabled = false;
       if (btnBatchDownload) btnBatchDownload.disabled = false;
     } catch (e) {
-      setFeedback(`<div class="alert">解析失败：${escapeHtml(e.message || "未知错误")}</div>`);
+      setFeedback(`<div class="alert">解析失败：${escapeHtml(fetchErrorMessage(e, "未知错误"))}</div>`);
     } finally {
       setBusy(false);
     }
@@ -162,14 +182,18 @@
     setBusy(true);
     setFeedback('<div class="loading"><div class="spinner"></div>正在匹配标准（预览）…</div>');
     try {
-      const res = await fetch("/api/batch/preview", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: parsedItems,
-          scan_disk: batchScanDisk?.checked === true,
-        }),
-      });
+      const res = await fetchWithTimeout(
+        "/api/batch/preview",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            items: parsedItems,
+            scan_disk: batchScanDisk?.checked === true,
+          }),
+        },
+        10 * 60 * 1000
+      );
       const data = await res.json();
       if (!data.ok) {
         setFeedback(`<div class="alert">${escapeHtml(data.error || "预览失败")}</div>`);
@@ -187,7 +211,7 @@
         `<div class="batch-hint">预览完成：共 ${s.total} 条，预计可下载 <strong>${s.success}</strong> 个 PDF，失败 ${s.failed} 条。</div>`
       );
     } catch (e) {
-      setFeedback(`<div class="alert">预览失败：${escapeHtml(e.message || "未知错误")}</div>`);
+      setFeedback(`<div class="alert">预览失败：${escapeHtml(fetchErrorMessage(e, "未知错误"))}</div>`);
     } finally {
       setBusy(false);
     }
@@ -210,10 +234,10 @@
       const fd = new FormData();
       fd.append("file", file);
       fd.append("items", JSON.stringify(parsedItems));
-      const res = await fetch(`/api/batch/download?scan_disk=${scan ? "1" : "0"}`, {
-        method: "POST",
-        body: fd,
-      });
+      const res = await fetchWithTimeout(
+        `/api/batch/download?scan_disk=${scan ? "1" : "0"}`,
+        { method: "POST", body: fd }
+      );
       const ctype = res.headers.get("content-type") || "";
       if (!res.ok) {
         let err = "下载失败";
@@ -245,7 +269,7 @@
       );
       setStep(3);
     } catch (e) {
-      setFeedback(`<div class="alert">下载失败：${escapeHtml(e.message || "未知错误")}</div>`);
+      setFeedback(`<div class="alert">下载失败：${escapeHtml(fetchErrorMessage(e, "未知错误"))}</div>`);
     } finally {
       setBusy(false);
     }

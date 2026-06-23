@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import csv
+import gc
 import io
 import json
 import re
@@ -17,6 +18,7 @@ from core.std_normalize import normalize_std_id
 
 MAX_ROWS = 400
 DISK_TIMEOUT = 12
+RESOLVE_BATCH_SIZE = 15
 
 _STD_HEADER_KEYS = (
     "标准编号",
@@ -462,26 +464,30 @@ def build_zip_archive(
 
     with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         total = len(items)
-        for idx, item in enumerate(items, start=1):
-            if progress:
-                progress(idx, total)
-            query = (item.get("query") or "").strip()
-            row_no = item.get("row") or idx
-            resolved = resolve_item(query, scan_disk=scan_disk)
-            resolved["row"] = row_no
-            results.append(resolved)
-            if resolved.get("status") != "ok":
-                continue
-            pdf_path = Path(resolved["pdf_path"])
-            if not check_file_exists_in_cache(pdf_path):
-                resolved["status"] = "no_pdf"
-                resolved["message"] = "PDF 文件不存在"
-                continue
-            prefix = f"{row_no:03d}_"
-            entry_name = _unique_name(used_names, prefix + resolved["zip_name"])
-            zf.write(pdf_path, arcname=f"PDF/{entry_name}")
-            resolved["zip_entry"] = entry_name
-            ok_count += 1
+        for batch_start in range(0, total, RESOLVE_BATCH_SIZE):
+            batch = items[batch_start : batch_start + RESOLVE_BATCH_SIZE]
+            for offset, item in enumerate(batch):
+                idx = batch_start + offset + 1
+                if progress:
+                    progress(idx, total)
+                query = (item.get("query") or "").strip()
+                row_no = item.get("row") or idx
+                resolved = resolve_item(query, scan_disk=scan_disk)
+                resolved["row"] = row_no
+                results.append(resolved)
+                if resolved.get("status") != "ok":
+                    continue
+                pdf_path = Path(resolved["pdf_path"])
+                if not check_file_exists_in_cache(pdf_path):
+                    resolved["status"] = "no_pdf"
+                    resolved["message"] = "PDF 文件不存在"
+                    continue
+                prefix = f"{row_no:03d}_"
+                entry_name = _unique_name(used_names, prefix + resolved["zip_name"])
+                zf.write(pdf_path, arcname=f"PDF/{entry_name}")
+                resolved["zip_entry"] = entry_name
+                ok_count += 1
+            gc.collect()
 
         if original_data and original_filename:
             try:
@@ -600,13 +606,17 @@ def build_zip_from_base_ids(
 
 def preview_items(items: list[dict], *, scan_disk: bool = False) -> dict[str, Any]:
     rows: list[dict] = []
-    for item in items[:MAX_ROWS]:
-        q = (item.get("query") or "").strip()
-        if not q:
-            continue
-        resolved = resolve_item(q, scan_disk=scan_disk)
-        resolved["row"] = item.get("row")
-        rows.append(resolved)
+    capped = items[:MAX_ROWS]
+    for batch_start in range(0, len(capped), RESOLVE_BATCH_SIZE):
+        batch = capped[batch_start : batch_start + RESOLVE_BATCH_SIZE]
+        for item in batch:
+            q = (item.get("query") or "").strip()
+            if not q:
+                continue
+            resolved = resolve_item(q, scan_disk=scan_disk)
+            resolved["row"] = item.get("row")
+            rows.append(resolved)
+        gc.collect()
     ok = sum(1 for r in rows if r.get("status") == "ok")
     return {
         "ok": True,

@@ -564,9 +564,13 @@ def api_batch_download():
     if not db.is_ready() and not scan_disk:
         return jsonify({"ok": False, "error": "标准库未就绪，请先运行 scripts/build_index.py 或勾选「扫描磁盘」"}), 503
 
+    def _batch_progress(done: int, total: int) -> None:
+        print(f"  [批量下载] {done}/{total}", flush=True)
+
     buf, summary = build_zip_archive(
         items,
         scan_disk=scan_disk,
+        progress=_batch_progress,
         original_data=original_data,
         original_filename=original_filename,
         parse_meta=parse_meta,
