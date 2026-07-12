@@ -31,9 +31,10 @@ from core.pdf_discovery import discover_pdfs_on_disk  # noqa: E402
 from core.pdf_service import collect_files_for_standard, find_pdf_on_disk  # noqa: E402
 from core.product_clusters import list_clusters_brief  # noqa: E402
 from core.product_search import product_search  # noqa: E402
-from core.search_filters import filter_options_payload, parse_advanced_filters  # noqa: E402
+from core.search_filters import filter_options_payload, parse_advanced_filters, parse_workflow, validate_search_workflow  # noqa: E402
 from paths import PDF_ROOT, PDF_SEARCH_ROOT, SQLITE_PATH, TUANGBIAO_DIR, ZHIDU_DIR  # noqa: E402
 from core.tuangbiao_catalog import tuangbiao  # noqa: E402
+from core.terminology import terminology  # noqa: E402
 from core.zhidu_catalog import zhidu  # noqa: E402
 
 app = Flask(__name__, static_folder=None)
@@ -163,6 +164,11 @@ def api_search():
             return jsonify({"ok": True, "query": q, **data})
 
         filters = parse_advanced_filters(request.args)
+        workflow = parse_workflow(request.args.get("workflow"))
+        wf_err = validate_search_workflow(workflow, q=q, filters=filters)
+        if wf_err:
+            return jsonify({"ok": False, "error": wf_err, "workflow": workflow}), 400
+
         if not q and not filters.active():
             return jsonify({"ok": False, "error": "请输入关键词或设置高级筛选条件"}), 400
 
@@ -199,11 +205,59 @@ def api_search():
             data["items"] = _enrich_items(
                 data.get("items") or [], scan_disk=scan_disk
             )
-        return jsonify({"ok": True, "query": q, **data})
+        return jsonify({"ok": True, "query": q, "workflow": workflow, **data})
     except ValueError:
         return jsonify({"ok": False, "error": "请求参数无效"}), 400
     except Exception as exc:
         return jsonify({"ok": False, "error": f"检索失败：{exc}"}), 500
+
+
+@app.route("/api/terminology/search")
+def api_terminology_search():
+    try:
+        q = (request.args.get("q") or "").strip()
+        page = max(1, int(request.args.get("page", 1)))
+        per_page = min(50, max(1, int(request.args.get("per_page", 10))))
+        gb_only = request.args.get("gb_only", "1") != "0"
+        semantic = request.args.get("semantic", "1") != "0"
+        enrich = request.args.get("enrich", "0") == "1"
+        scan_disk = request.args.get("scan_disk", "0") != "0"
+        if not q:
+            return jsonify({"ok": False, "error": "请输入术语关键词"}), 400
+        data = terminology.search_page(q, page=page, per_page=per_page, gb_only=gb_only, semantic=semantic)
+        if data.get("error"):
+            return jsonify({"ok": False, "error": data["error"]}), 400
+        if enrich and data.get("items"):
+            base_ids = [int(it["base_id"]) for it in data["items"] if it.get("base_id")]
+            enriched = _enrich_items([{"id": bid} for bid in base_ids], scan_disk=scan_disk)
+            by_id = {int(it["id"]): it for it in enriched}
+            for it in data["items"]:
+                bid = it.get("base_id")
+                if bid and int(bid) in by_id:
+                    full = by_id[int(bid)]
+                    it["has_pdf"] = full.get("has_pdf", False)
+                    it["files"] = full.get("files", [])
+        return jsonify({"ok": True, **data})
+    except ValueError:
+        return jsonify({"ok": False, "error": "请求参数无效"}), 400
+    except Exception as exc:
+        return jsonify({"ok": False, "error": f"术语检索失败：{exc}"}), 500
+
+
+@app.route("/api/terminology/status")
+def api_terminology_status():
+    from core.term_ai import ai_ready
+
+    return jsonify(
+        {
+            "ok": True,
+            "ready": terminology.is_ready(),
+            "indexed": terminology.indexed_count(),
+            "describe": terminology.describe(),
+            "ai_ready": ai_ready(),
+            "db_ready": db.is_ready(),
+        }
+    )
 
 
 @app.route("/api/search/filters")
@@ -460,6 +514,8 @@ def api_health():
             "version": APP_VERSION,
             "db_ready": db.is_ready(),
             "db_backend": db.backend_name(),
+            "mysql_configured": bool(__import__("config").MYSQL_PASSWORD),
+            "mysql_available": db._mysql_available(),
             "geo_download": geo_download_status(),
             "sqlite_path": str(SQLITE_PATH),
             "sqlite_exists": SQLITE_PATH.is_file(),
@@ -471,6 +527,8 @@ def api_health():
             "tuangbiao_ready": tuangbiao.is_ready(),
             "zhidu": zhidu.describe(),
             "zhidu_ready": zhidu.is_ready(),
+            "terminology": terminology.describe(),
+            "terminology_ready": terminology.is_ready(),
         }
     )
 
@@ -576,7 +634,10 @@ def main() -> None:
     print(f"    浏览器打开: {url}")
     print(f"    数据库: {db.backend_name()}  PDF根目录: {PDF_ROOT}")
     if not db.is_ready():
-        print("    [提示] 标准库未就绪，请运行: python scripts/build_index.py")
+        print("    [提示] 标准库未就绪，请运行: python scripts/seed_demo_index.py 或 build_index.py")
+    from core.terminology import terminology
+    if not terminology.is_ready():
+        print("    [提示] 术语索引未就绪，请运行: python scripts/seed_demo_index.py")
     if not PDF_ROOT.is_dir():
         print(f"    [提示] PDF 目录不存在，请检查 paths.py 或 .env 中的 PDF_ROOT")
     print("    请勿关闭本窗口")

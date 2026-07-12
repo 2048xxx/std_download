@@ -113,6 +113,35 @@ def _parse_int(value: Any) -> int | None:
         return None
 
 
+def parse_workflow(value: Any) -> str:
+    raw = (value or "").strip().lower()
+    if raw in ("filter_first", "filter-first", "filter"):
+        return "filter_first"
+    if raw in ("search_first", "search-first", "search"):
+        return "search_first"
+    return "combined"
+
+
+def validate_search_workflow(
+    workflow: str,
+    *,
+    q: str,
+    filters: AdvancedFilters,
+) -> str | None:
+    q = (q or "").strip()
+    if workflow == "filter_first":
+        if q and not filters.active():
+            return "「先筛选后查询」：请先设置高级筛选，再在范围内输入关键词"
+        if not q and not filters.active():
+            return "「先筛选后查询」：请先设置并应用高级筛选条件"
+    elif workflow == "search_first":
+        if filters.active() and not q:
+            return "「先查询后筛选」：请先输入关键词检索，再叠加高级筛选"
+        if not q and not filters.active():
+            return "「先查询后筛选」：请先输入标准编号或名称关键词"
+    return None
+
+
 def _load_product_clusters() -> list[dict]:
     if not PRODUCT_CLUSTERS_PATH.is_file():
         return []

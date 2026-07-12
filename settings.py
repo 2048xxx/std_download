@@ -36,4 +36,11 @@ ES_INDEX = os.getenv("ES_INDEX", "standards")
 ES_USER = os.getenv("ES_USER", "")
 ES_PASSWORD = os.getenv("ES_PASSWORD", "")
 
-APP_VERSION = "3.0.0"
+APP_VERSION = "3.1.0"
+
+# 术语 AI 语义扩展（OpenAI 兼容，如 DeepSeek）
+AI_ENABLED = os.getenv("AI_ENABLED", "false").lower() in ("1", "true", "yes")
+AI_API_BASE = os.getenv("AI_API_BASE", "https://api.deepseek.com/v1").rstrip("/")
+AI_API_KEY = os.getenv("AI_API_KEY", "").strip()
+AI_MODEL = os.getenv("AI_MODEL", "deepseek-chat")
+AI_TIMEOUT = int(os.getenv("AI_TIMEOUT", "30"))

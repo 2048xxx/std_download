@@ -1828,9 +1828,183 @@
       margin-bottom: 0.65rem;
     }
     .main-area.mode-batch .search-tools,
-    .main-area.mode-batch .advanced-panel {
+    .main-area.mode-batch .advanced-panel,
+    .main-area.mode-batch .workflow-guide {
       display: none !important;
     }
+    .main-area.mode-terminology .workflow-segment,
+    .main-area.mode-terminology .btn-advanced-toggle,
+    .main-area.mode-terminology .bulk-bar,
+    .main-area.mode-terminology .advanced-panel,
+    .main-area.mode-terminology .workflow-guide {
+      display: none !important;
+    }
+    .main-area.mode-product .workflow-segment,
+    .main-area.mode-product .workflow-guide,
+    .main-area.mode-tuangbiao .workflow-segment,
+    .main-area.mode-tuangbiao .workflow-guide {
+      display: none !important;
+    }
+    .search-tools-left {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem 0.75rem;
+    }
+    .workflow-segment {
+      display: inline-flex;
+      padding: 3px;
+      border-radius: 999px;
+      background: #eef2f7;
+      border: 1px solid var(--border);
+    }
+    .workflow-tab {
+      font-family: inherit;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0.4rem 0.85rem;
+      border: none;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+    }
+    .workflow-tab.active {
+      background: #fff;
+      color: var(--accent2);
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+    }
+    .workflow-guide {
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto 0.75rem;
+      padding: 0.85rem 1rem;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #f0f9ff 0%, #eef2ff 100%);
+      border: 1px solid #bfdbfe;
+    }
+    .workflow-steps {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem 0.5rem;
+      margin-bottom: 0.35rem;
+    }
+    .wf-step {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    .wf-step.active { color: var(--accent2); font-weight: 600; }
+    .wf-step em {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.35rem;
+      height: 1.35rem;
+      border-radius: 50%;
+      font-style: normal;
+      font-size: 0.72rem;
+      font-weight: 700;
+      background: #e2e8f0;
+      color: #64748b;
+    }
+    .wf-step.active em {
+      background: var(--accent);
+      color: #fff;
+    }
+    .wf-arrow { color: #94a3b8; font-size: 0.85rem; }
+    .workflow-guide-tip {
+      margin: 0;
+      font-size: 0.8rem;
+      color: #475569;
+      line-height: 1.45;
+    }
+    .term-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin: -0.35rem 0 1rem;
+      max-width: 960px;
+      padding-left: 0.15rem;
+    }
+    .main-area.mode-terminology .search-panel {
+      margin-bottom: 0.65rem;
+    }
+    .term-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #fff;
+      font-size: 0.8rem;
+      color: var(--text);
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .term-chip:has(input:checked) {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent2);
+    }
+    .term-chip input { accent-color: var(--accent); }
+    .term-banner .term-banner-inner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem 0.75rem;
+    }
+    .term-banner-tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.2rem 0.55rem;
+      border-radius: 6px;
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+    .term-banner-kws { font-weight: 600; color: var(--accent2); }
+    .term-banner-note { font-size: 0.82rem; color: var(--muted); }
+    .term-results-card .term-table .col-def { min-width: 14rem; max-width: 36rem; }
+    .term-def-text {
+      margin: 0;
+      line-height: 1.5;
+      font-size: 0.88rem;
+      color: var(--text);
+    }
+    .term-table code {
+      font-size: 0.82rem;
+      padding: 0.15rem 0.4rem;
+      border-radius: 6px;
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+    .btn-term-dl {
+      font-family: inherit;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.35rem 0.75rem;
+      border-radius: 8px;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+    }
+    .btn-term-dl.disabled {
+      background: #e2e8f0;
+      color: #94a3b8;
+      cursor: default;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 2.5rem 1rem;
+      color: var(--muted);
+    }
+    .empty-state .empty-hint { font-size: 0.85rem; margin-top: 0.35rem; }
     .btn-advanced-toggle {
       font-family: inherit;
       font-size: 0.88rem;

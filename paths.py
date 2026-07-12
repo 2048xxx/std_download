@@ -81,6 +81,7 @@ CACHE_DB_PATH = DATA_DIR / "query_cache.db"
 TUANGBIAO_DB_PATH = DATA_DIR / "tuangbiao.db"
 ZHIDU_DB_PATH = DATA_DIR / "zhidu.db"
 UNITS_DB_PATH = DATA_DIR / "units.db"
+TERMS_DB_PATH = DATA_DIR / "terms.db"
 
 # ---------- SQL 导出（构建索引） ----------
 SQL_DUMP_DIR = Path(

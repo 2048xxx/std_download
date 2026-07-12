@@ -38,7 +38,11 @@ if errorlevel 1 (
 
 if not exist "data\standards.db" (
     echo  [提示] 未找到 data\standards.db，标准检索可能不可用
-    echo         需要时可运行: python scripts\build_index.py
+    echo         可运行: python scripts\seed_demo_index.py
+)
+if not exist "data\terms.db" (
+    echo  [提示] 未找到 data\terms.db，术语检索可能不可用
+    echo         可运行: python scripts\seed_demo_index.py
 )
 if not exist "data\units.db" (
     echo  [提示] 未找到 data\units.db，省/市/起草单位筛选可能不可用

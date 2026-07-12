@@ -20,7 +20,11 @@
   const PAGE_COPY = {
     search: {
       title: "企业级标准下载中心",
-      subtitle: "构建专属合规资源库，支持多维度筛选与海量标准一键打包提取。",
+      subtitle: "构建专属合规资源库，支持先查询后筛选 / 先筛选后查询双模式。",
+    },
+    terminology: {
+      title: "术语检索",
+      subtitle: "输入术语即可查找定义所在的国标，支持 AI 语义扩展与 PDF 下载。",
     },
     product: {
       title: "同类产品标准检索",
@@ -40,12 +44,7 @@
   const HISTORY_KEY = "pdf_search_history_v1";
   let currentMode = "search";
   let currentPage = 1;
-  const modeQueries = {
-    search: "",
-    product: "",
-    tuangbiao: "",
-    batch: "",
-  };
+  const modeQueries = { search: "", terminology: "", product: "", tuangbiao: "", batch: "" };
 
   function persistModeQuery() {
     if (input) modeQueries[currentMode] = input.value || "";
@@ -60,7 +59,7 @@
   }
 
   function isSearchLikeMode(mode) {
-    return mode === "search" || mode === "product" || isCatalogMode(mode);
+    return mode === "search" || mode === "product" || mode === "terminology" || isCatalogMode(mode);
   }
 
   function escapeHtml(s) {
@@ -158,15 +157,11 @@
     }
     currentMode = mode;
     if (!mainArea) return;
-    mainArea.classList.remove(
-      "mode-search",
-      "mode-batch",
-      "mode-product",
-      "mode-tuangbiao"
-    );
+    mainArea.classList.remove("mode-search", "mode-batch", "mode-product", "mode-tuangbiao", "mode-terminology");
     if (mode === "batch") mainArea.classList.add("mode-batch");
     else if (mode === "product") mainArea.classList.add("mode-product");
     else if (mode === "tuangbiao") mainArea.classList.add("mode-tuangbiao");
+    else if (mode === "terminology") mainArea.classList.add("mode-terminology");
     else mainArea.classList.add("mode-search");
 
     document.querySelectorAll(".nav-group[data-mode]").forEach(g => {
@@ -199,20 +194,18 @@
     if (results) results.hidden = mode === "batch";
     if (batchStage) batchStage.hidden = mode !== "batch";
     if (searchTools) {
-      const showBulk =
-        mode === "search" ||
-        mode === "product" ||
-        mode === "tuangbiao";
-      searchTools.hidden = !showBulk;
-      searchTools.style.removeProperty("display");
+      const showTools = mode === "search" || mode === "terminology";
+      searchTools.hidden = !showTools;
+      if (showTools) searchTools.style.removeProperty("display");
     }
+    const bulkBar = searchTools?.querySelector(".bulk-bar");
+    if (bulkBar) bulkBar.hidden = mode !== "search";
+    window.TerminologyUI?.updateWorkflowUi?.();
     const bulkScan = document.querySelector(".bulk-scan");
     if (bulkScan) {
       bulkScan.hidden = mode === "tuangbiao";
     }
-    if (btnAdvanced) {
-      btnAdvanced.style.display = mode === "search" ? "" : "none";
-    }
+    if (btnAdvanced) btnAdvanced.style.display = mode === "search" ? "" : "none";
     if (advancedPanel) {
       if (mode !== "search") {
         advancedPanel.hidden = true;
@@ -221,19 +214,18 @@
         advancedPanel.hidden = true;
       }
     }
+    const termBanner = document.getElementById("termSemanticBanner");
+    if (termBanner && mode !== "terminology") termBanner.hidden = true;
 
     if (input) {
       const placeholders = {
+        terminology: "输入术语，如：数据元、个人信息、网络安全",
         product: "输入产品名，如：牙膏、牛奶、化妆品",
-        tuangbiao: "输入团标名称或协会名，如：餐饮、安徽省安全生产协会",
+        tuangbiao: "输入团标名称或协会名关键词",
       };
-      input.placeholder =
-        placeholders[mode] || "标准编号或名称关键词，如 GB/T 1002-2024、煤矿";
+      input.placeholder = placeholders[mode] || "标准编号或名称关键词";
     }
-    const btnLabels = {
-      product: "同类检索",
-      tuangbiao: "检索团标",
-    };
+    const btnLabels = { terminology: "术语检索", product: "同类检索", tuangbiao: "检索团标" };
     if (btnSearch) btnSearch.textContent = btnLabels[mode] || "检索";
 
     updateCatalogBanner(mode);
@@ -509,8 +501,22 @@
   }
 
   async function doSearch(page) {
+    if (currentMode === "terminology") {
+      window.TerminologyUI?.doSearch?.(page || 1);
+      return;
+    }
     const q = (input?.value || "").trim();
+    const workflow = window.TerminologyUI?.getWorkflow?.() || "search_first";
     const advActive = currentMode === "search" && window.AdvancedUI?.hasActiveFilters?.();
+
+    if (currentMode === "search" && workflow === "filter_first" && !advActive) {
+      results.innerHTML = '<div class="alert">「先筛选后查询」：请先打开高级选项，设置条件并点击「应用筛选」</div>';
+      return;
+    }
+    if (currentMode === "search" && workflow === "search_first" && !q) {
+      results.innerHTML = '<div class="alert">「先查询后筛选」：请先输入标准编号或名称关键词</div>';
+      return;
+    }
     if (!q && !advActive) {
       const hints = {
         tuangbiao: "请输入团标名称或协会名关键词",
@@ -541,6 +547,7 @@
       const extra = new URLSearchParams(window.AdvancedUI.filterQuery());
       extra.forEach((v, k) => params.set(k, v));
     }
+    if (currentMode === "search") params.set("workflow", workflow);
 
     try {
       const res = await fetch(`/api/search?${params.toString()}`);
@@ -619,5 +626,5 @@
   loadHealth();
   setMode("search");
 
-  window.AppUI = { setMode, doSearch, getMode: () => currentMode };
+  window.AppUI = { setMode, doSearch, getMode: () => currentMode, renderPager };
 })();

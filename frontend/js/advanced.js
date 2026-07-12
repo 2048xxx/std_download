@@ -861,6 +861,11 @@
 
   el("btnAdvancedApply")?.addEventListener("click", () => {
     if (!validateRankFilter()) return;
+    const workflow = window.TerminologyUI?.getWorkflow?.() || "search_first";
+    if (workflow === "search_first" && !el("query")?.value?.trim()) {
+      alert("「先查询后筛选」：请先输入关键词并完成检索，再叠加筛选。");
+      return;
+    }
     saveFilterHistory();
     window.dispatchEvent(new CustomEvent("advanced-search"));
   });

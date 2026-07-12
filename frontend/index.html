@@ -7,7 +7,7 @@
   <title>ZKBZ 标准PDF下载</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/main.css?v=4.1.2" />
+  <link rel="stylesheet" href="css/main.css?v=4.3.1" />
 </head>
 <body>
   <div class="app-shell" id="appLayout">
@@ -44,6 +44,15 @@
               <ul class="category-list" id="productClusterList"></ul>
             </div>
           </div>
+        </div>
+        <div class="nav-group" data-mode="terminology">
+          <button type="button" class="sidebar-mode" data-mode-switch="terminology">
+            <span class="mode-icon" aria-hidden="true">📖</span>
+            <span class="mode-text">
+              <span class="mode-name">术语检索</span>
+              <span class="mode-desc">输入术语查国标定义</span>
+            </span>
+          </button>
         </div>
         <div class="nav-group" data-mode="tuangbiao">
           <button type="button" class="sidebar-mode" data-mode-switch="tuangbiao">
@@ -91,7 +100,13 @@
         </div>
 
         <div class="search-tools" id="searchTools">
-          <button type="button" class="btn-advanced-toggle" id="btnAdvancedToggle">高级选项</button>
+          <div class="search-tools-left">
+            <div class="workflow-segment" id="workflowSegment" role="tablist" aria-label="检索方式">
+              <button type="button" class="workflow-tab" data-workflow="search_first" role="tab" aria-selected="true">先查询后筛选</button>
+              <button type="button" class="workflow-tab" data-workflow="filter_first" role="tab" aria-selected="false">先筛选后查询</button>
+            </div>
+            <button type="button" class="btn-advanced-toggle" id="btnAdvancedToggle">高级选项</button>
+          </div>
           <div class="bulk-bar">
             <label class="bulk-select-all"><input type="checkbox" id="chkSelectPage" /> 本页全选</label>
             <label class="bulk-scan"><input type="checkbox" id="advScanDisk" checked /> 扫描磁盘</label>
@@ -104,7 +119,7 @@
         <div class="advanced-panel" id="advancedPanel" hidden>
           <div class="advanced-panel-head">
             <h3>高级筛选</h3>
-            <p>按全部起草单位地址归类，可与关键词组合检索</p>
+            <p id="advancedPanelHint">按全部起草单位地址归类，可与关键词组合检索</p>
           </div>
           <div class="advanced-grid">
             <label class="adv-field">
@@ -184,15 +199,23 @@
             <span class="search-icon">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
             </span>
-            <input
-              type="text"
-              id="query"
-              name="q"
-              placeholder="标准编号或名称关键词，如 GB/T 1002-2024、煤矿"
-              autocomplete="off"
-            />
+            <input type="text" id="query" name="q" placeholder="标准编号或名称关键词，如 GB/T 1002-2024、煤矿" autocomplete="off" />
             <button type="submit" class="btn-search" id="btnSearch">检索</button>
           </form>
+        </div>
+        <div class="term-toolbar" id="termToolbar" hidden>
+          <label class="term-chip"><input type="checkbox" id="chkTermSemantic" checked /><span>AI 语义扩展</span></label>
+          <label class="term-chip"><input type="checkbox" id="chkGbOnly" checked /><span>仅国标 GB</span></label>
+          <label class="term-chip"><input type="checkbox" id="chkTermScanDisk" checked /><span>扫描磁盘</span></label>
+        </div>
+
+        <div class="workflow-guide" id="workflowGuide" hidden>
+          <div class="workflow-steps" id="workflowSteps">
+            <span class="wf-step" data-step="1"><em>1</em><span class="wf-step-text">输入关键词检索</span></span>
+            <span class="wf-arrow">→</span>
+            <span class="wf-step" data-step="2"><em>2</em><span class="wf-step-text">叠加高级筛选</span></span>
+          </div>
+          <p class="workflow-guide-tip" id="workflowGuideTip"></p>
         </div>
 
         <div class="history-wrap empty" id="historyWrap">
@@ -200,6 +223,7 @@
           <div class="chips" id="historyChips"></div>
         </div>
 
+        <div id="termSemanticBanner" class="resolve-banner term-banner" hidden></div>
         <div id="productBanner" class="resolve-banner" hidden></div>
         <div id="results"></div>
 
@@ -298,8 +322,9 @@
     </div>
   </div>
 
-  <script src="js/app.js?v=4.1.0"></script>
-  <script src="js/advanced.js?v=4.1.2"></script>
+  <script src="js/app.js?v=4.3.0"></script>
+  <script src="js/advanced.js?v=4.3.0"></script>
+  <script src="js/terminology.js?v=4.3.0"></script>
   <script src="js/batch.js?v=4.0.0"></script>
 </body>
 </html>
