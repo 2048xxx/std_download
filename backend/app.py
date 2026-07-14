@@ -69,7 +69,7 @@ def create_app() -> Flask:
     return app
 
 
-def _standard_json(std: StandardInfo, *, scan_disk: bool = True) -> dict:
+def _standard_json(std: StandardInfo, *, scan_disk: bool = False) -> dict:
     files = collect_files_for_standard(std, scan_disk=scan_disk)
     return {
         "id": std.id,
@@ -96,7 +96,7 @@ def _standard_json(std: StandardInfo, *, scan_disk: bool = True) -> dict:
     }
 
 
-def _enrich_items(items: list[dict], *, scan_disk: bool = True) -> list[dict]:
+def _enrich_items(items: list[dict], *, scan_disk: bool = False) -> list[dict]:
     out: list[dict] = []
     for it in items:
         std = db.get_by_id(int(it["id"]))
@@ -330,7 +330,7 @@ def api_download_geo():
     filters = parse_advanced_filters(body)
     q = (body.get("q") or "").strip()
     pdf_only = body.get("pdf_only", True) in (True, 1, "1", "true")
-    scan_disk = body.get("scan_disk", True) in (True, 1, "1", "true")
+    scan_disk = body.get("scan_disk", False) in (True, 1, "1", "true")
     if not filters.province:
         return jsonify({"ok": False, "error": "请选择省份"}), 400
     if not geo_download_status()["ready"]:
@@ -413,7 +413,7 @@ def api_download_bulk():
 
 @app.route("/api/std/<int:base_id>")
 def api_std_detail(base_id: int):
-    scan_disk = request.args.get("scan_disk", "1") != "0"
+    scan_disk = request.args.get("scan_disk", "0") != "0"
     std = db.get_by_id(base_id)
     if not std:
         return jsonify({"ok": False, "error": "未找到该标准"}), 404
@@ -567,13 +567,13 @@ def api_batch_preview():
         return jsonify({"ok": False, "error": "无待预览条目"}), 400
     scan_disk = body.get("scan_disk", False)
     if not db.is_ready() and not scan_disk:
-        return jsonify({"ok": False, "error": "标准库未就绪，请先构建索引或勾选「扫描磁盘」"}), 503
+        return jsonify({"ok": False, "error": "标准库未就绪，请先配置数据库或构建索引"}), 503
     return jsonify(preview_items(items, scan_disk=scan_disk))
 
 
 @app.route("/api/batch/download", methods=["POST"])
 def api_batch_download():
-    scan_disk = request.args.get("scan_disk", "1") != "0"
+    scan_disk = request.args.get("scan_disk", "0") != "0"
     items: list[dict] = []
     original_data: bytes | None = None
     original_filename: str | None = None
@@ -603,7 +603,7 @@ def api_batch_download():
         return jsonify({"ok": False, "error": "无待下载条目"}), 400
 
     if not db.is_ready() and not scan_disk:
-        return jsonify({"ok": False, "error": "标准库未就绪，请先运行 scripts/build_index.py 或勾选「扫描磁盘」"}), 503
+        return jsonify({"ok": False, "error": "标准库未就绪，请先配置数据库或构建索引"}), 503
 
     buf, summary = build_zip_archive(
         items,

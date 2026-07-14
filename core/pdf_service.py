@@ -62,7 +62,7 @@ def _append_unique_file(files: list[dict], seen: set[str], entry: dict) -> None:
     files.append(entry)
 
 
-def collect_files_for_standard(std: StandardInfo, *, scan_disk: bool = True) -> list[dict]:
+def collect_files_for_standard(std: StandardInfo, *, scan_disk: bool = False) -> list[dict]:
     files: list[dict] = []
     seen: set[str] = set()
     for f in std.files or []:

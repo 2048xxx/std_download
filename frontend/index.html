@@ -7,7 +7,7 @@
   <title>ZKBZ 标准PDF下载</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/main.css?v=4.3.1" />
+  <link rel="stylesheet" href="css/main.css?v=4.3.2" />
 </head>
 <body>
   <div class="app-shell" id="appLayout">
@@ -109,7 +109,6 @@
           </div>
           <div class="bulk-bar">
             <label class="bulk-select-all"><input type="checkbox" id="chkSelectPage" /> 本页全选</label>
-            <label class="bulk-scan"><input type="checkbox" id="advScanDisk" checked /> 扫描磁盘</label>
             <button type="button" class="btn-bulk-download" id="btnBulkDownload" disabled>
               多项下载 (<span id="bulkCount">0</span>)
             </button>
@@ -206,7 +205,6 @@
         <div class="term-toolbar" id="termToolbar" hidden>
           <label class="term-chip"><input type="checkbox" id="chkTermSemantic" checked /><span>AI 语义扩展</span></label>
           <label class="term-chip"><input type="checkbox" id="chkGbOnly" checked /><span>仅国标 GB</span></label>
-          <label class="term-chip"><input type="checkbox" id="chkTermScanDisk" checked /><span>扫描磁盘</span></label>
         </div>
 
         <div class="workflow-guide" id="workflowGuide" hidden>
@@ -292,10 +290,6 @@
                   <span class="batch-dropzone-hint">Excel / CSV</span>
                   <span class="batch-dropzone-name" id="batchFileName">未选择文件</span>
                 </label>
-                <label class="batch-scan-option">
-                  <input type="checkbox" id="batchScanDisk" checked />
-                  <span>扫描磁盘（E 盘标准库，库内无记录时继续查找）</span>
-                </label>
                 <div class="batch-actions">
                   <button type="button" class="btn-batch btn-batch-primary" id="btnBatchParse">解析文件</button>
                   <button type="button" class="btn-batch btn-batch-secondary" id="btnBatchPreview" disabled>预览匹配</button>
@@ -304,7 +298,7 @@
                     下载 ZIP
                   </button>
                 </div>
-                <p class="batch-meta" id="batchMeta">后端模式 · 自动读 E 盘 · 单次最多 400 条</p>
+                <p class="batch-meta" id="batchMeta">基于标准库匹配 · 单次最多 400 条</p>
               </section>
             </div>
 
@@ -322,9 +316,9 @@
     </div>
   </div>
 
-  <script src="js/app.js?v=4.3.0"></script>
-  <script src="js/advanced.js?v=4.3.0"></script>
-  <script src="js/terminology.js?v=4.3.0"></script>
-  <script src="js/batch.js?v=4.0.0"></script>
+  <script src="js/app.js?v=4.3.2"></script>
+  <script src="js/advanced.js?v=4.3.2"></script>
+  <script src="js/terminology.js?v=4.3.2"></script>
+  <script src="js/batch.js?v=4.3.2"></script>
 </body>
 </html>

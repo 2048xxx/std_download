@@ -5,7 +5,6 @@
   const btnBatchParse = el("btnBatchParse");
   const btnBatchPreview = el("btnBatchPreview");
   const btnBatchDownload = el("btnBatchDownload");
-  const batchScanDisk = el("batchScanDisk");
   const batchMeta = el("batchMeta");
   const batchTableWrap = el("batchTableWrap");
   const batchTableSection = el("batchTableSection");
@@ -167,7 +166,7 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           items: parsedItems,
-          scan_disk: batchScanDisk?.checked !== false,
+          scan_disk: false,
         }),
       });
       const data = await res.json();
@@ -204,13 +203,12 @@
       return;
     }
     setBusy(true);
-    setFeedback('<div class="loading"><div class="spinner"></div>正在检索 E 盘 PDF 并打包，请稍候…</div>');
+    setFeedback('<div class="loading"><div class="spinner"></div>正在从标准库匹配 PDF 并打包，请稍候…</div>');
     try {
-      const scan = batchScanDisk?.checked !== false;
       const fd = new FormData();
       fd.append("file", file);
       fd.append("items", JSON.stringify(parsedItems));
-      const res = await fetch(`/api/batch/download?scan_disk=${scan ? "1" : "0"}`, {
+      const res = await fetch("/api/batch/download?scan_disk=0", {
         method: "POST",
         body: fd,
       });
@@ -313,7 +311,7 @@
   if (btnBatchPreview) btnBatchPreview.addEventListener("click", doPreview);
   if (btnBatchDownload) btnBatchDownload.addEventListener("click", doDownload);
 
-  setMeta("后端模式 · 自动读 E 盘 · 支持 .xlsx / .csv · 单次最多 400 条");
+  setMeta("基于标准库匹配 · 支持 .xlsx / .csv · 单次最多 400 条");
   setStep(1);
 
   fetch("/api/meta/health")
@@ -321,11 +319,7 @@
     .then(info => {
       if (!info.db_ready) {
         setFeedback(
-          '<div class="alert">标准库未就绪。请先运行 <code>python scripts/build_index.py</code> 构建索引；或勾选「扫描磁盘」仅按文件名查找 PDF。</div>'
-        );
-      } else if (!info.pdf_root_exists) {
-        setFeedback(
-          `<div class="alert">PDF 根目录不存在（${escapeHtml(info.pdf_root)}）。请检查 paths.py 或 .env 中的 PDF_ROOT。</div>`
+          '<div class="alert">标准库未就绪。请先配置数据库或运行索引构建脚本。</div>'
         );
       }
     })

@@ -361,10 +361,6 @@
       </div>`;
   }
 
-  function scanDiskEnabled() {
-    return document.getElementById("advScanDisk")?.checked !== false;
-  }
-
   async function loadRowDetail(id, detailRow) {
     if (!detailRow || detailRow.dataset.loaded === "1") return;
     const cell = detailRow.querySelector("td");
@@ -376,8 +372,7 @@
     }
     cell.innerHTML = '<div class="loading"><div class="spinner"></div>正在加载 PDF 详情…</div>';
     try {
-      const scan = scanDiskEnabled();
-      const res = await fetch(`/api/std/${id}?scan_disk=${scan ? "1" : "0"}`);
+      const res = await fetch(`/api/std/${id}?scan_disk=0`);
       const ct = res.headers.get("content-type") || "";
       if (!ct.includes("application/json")) {
         throw new Error(`详情加载失败（HTTP ${res.status}）`);
@@ -534,7 +529,7 @@
     params.set("page", String(currentPage));
     params.set("per_page", String(PER_PAGE));
     params.set("enrich", "0");
-    params.set("scan_disk", scanDiskEnabled() ? "1" : "0");
+    params.set("scan_disk", "0");
     if (currentMode === "product") {
       params.set("source", "product");
     } else if (isCatalogMode(currentMode)) {

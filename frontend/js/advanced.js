@@ -630,7 +630,7 @@
     if (fields.yearFrom?.value) body.year_from = fields.yearFrom.value;
     if (fields.yearTo?.value) body.year_to = fields.yearTo.value;
     body.pdf_only = true;
-    body.scan_disk = el("advScanDisk")?.checked !== false;
+    body.scan_disk = false;
     const q = el("query")?.value?.trim();
     if (q) body.q = q;
     return body;
@@ -768,7 +768,6 @@
     if (!selected.size) return;
     const mode = window.AppUI?.getMode?.() || "search";
     const isCatalog = mode === "tuangbiao";
-    const scan = el("advScanDisk")?.checked !== false;
     if (btnBulk) {
       btnBulk.disabled = true;
       btnBulk.textContent = "打包中…";
@@ -776,7 +775,7 @@
     try {
       const body = { ids: [...selected.keys()] };
       if (isCatalog) body.source = mode;
-      else body.scan_disk = scan;
+      else body.scan_disk = false;
       const res = await fetch("/api/download/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

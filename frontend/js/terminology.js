@@ -136,9 +136,8 @@
     container.querySelectorAll(".btn-term-dl[data-base]").forEach(btn => {
       btn.addEventListener("click", async () => {
         const baseId = btn.dataset.base;
-        const scan = document.getElementById("chkTermScanDisk")?.checked !== false;
         try {
-          const res = await fetch(`/api/std/${baseId}?scan_disk=${scan ? "1" : "0"}`);
+          const res = await fetch(`/api/std/${baseId}?scan_disk=0`);
           const j = await res.json();
           if (!j.ok || !j.item) {
             alert(j.error || "未找到文件");
@@ -186,7 +185,7 @@
       q, page: String(page || 1), per_page: "10", enrich: "1",
       gb_only: document.getElementById("chkGbOnly")?.checked !== false ? "1" : "0",
       semantic: document.getElementById("chkTermSemantic")?.checked !== false ? "1" : "0",
-      scan_disk: document.getElementById("chkTermScanDisk")?.checked !== false ? "1" : "0",
+      scan_disk: "0",
     });
 
     try {
