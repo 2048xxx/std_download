@@ -6,6 +6,7 @@ from pathlib import Path
 from paths import PDF_ROOT, PDF_SEARCH_ROOT
 from core.db import StandardInfo
 from core.pdf_discovery import discover_pdfs_on_disk, pdf_display_path
+from core.std_normalize import filename_contains_std_id, file_std_identity_key
 
 
 def find_pdf_on_disk(
@@ -40,35 +41,76 @@ def find_pdf_on_disk(
     return None
 
 
+def _file_display_name(f: dict) -> str:
+    name = (f.get("file_name") or "").strip()
+    if name:
+        return name
+    rel = (f.get("file_path") or "").strip()
+    return Path(rel.replace("\\", "/")).name if rel else ""
+
+
 def _file_dedupe_key(f: dict) -> str:
+    name = _file_display_name(f)
+    identity = file_std_identity_key(name) if name else None
+    if identity:
+        return f"std:{identity}"
     resolved = (f.get("resolved_path") or "").strip().lower()
     if resolved:
         return f"path:{resolved}"
     rel = (f.get("file_path") or "").strip().lower().replace("\\", "/")
-    name = (f.get("file_name") or "").strip().lower()
     if rel and name:
-        return f"rel:{rel}|{name}"
+        return f"rel:{rel}|{name.lower()}"
     if name:
-        return f"name:{name}"
+        return f"name:{name.lower()}"
     fid = f.get("id")
     return f"id:{fid}" if fid is not None else f"disk:{f.get('disk_index', 0)}"
 
 
-def _append_unique_file(files: list[dict], seen: set[str], entry: dict) -> None:
+def _file_preference_score(f: dict) -> tuple:
+    """去重时保留更优条目：存在 > 体积大 > 有库内 id。"""
+    return (
+        1 if f.get("exists") else 0,
+        int(f.get("file_size") or 0),
+        1 if f.get("id") is not None else 0,
+    )
+
+
+def _append_unique_file(files: list[dict], seen: dict[str, int], entry: dict) -> None:
     key = _file_dedupe_key(entry)
-    if key in seen:
+    if key not in seen:
+        seen[key] = len(files)
+        files.append(entry)
         return
-    seen.add(key)
-    files.append(entry)
+    idx = seen[key]
+    if _file_preference_score(entry) > _file_preference_score(files[idx]):
+        files[idx] = entry
+
+
+def _db_file_matches_standard(std: StandardInfo, f: dict) -> bool:
+    """过滤库内错误挂接：文件名年份/编号必须与标准号一致。"""
+    sid = (std.std_id or "").strip()
+    if not sid:
+        return True
+    name = (f.get("file_name") or "").strip()
+    rel = (f.get("file_path") or "").strip()
+    check = name or Path(rel.replace("\\", "/")).name
+    if not check:
+        return False
+    return filename_contains_std_id(check, sid)
 
 
 def collect_files_for_standard(std: StandardInfo, *, scan_disk: bool = False) -> list[dict]:
     files: list[dict] = []
-    seen: set[str] = set()
+    seen: dict[str, int] = {}
     for f in std.files or []:
+        if not _db_file_matches_standard(std, f):
+            continue
         rel = f.get("file_path") or ""
         name = f.get("file_name") or ""
-        found = find_pdf_on_disk(rel, name, std_id=std.std_id)
+        # 已通过文件名校验，解析路径时不再用 std_id 宽松兜底，避免指到旧年版本
+        found = find_pdf_on_disk(rel, name, std_id=None)
+        if found and not filename_contains_std_id(found.name, std.std_id or ""):
+            found = None
         entry = {
             **f,
             "exists": found is not None,
@@ -105,12 +147,14 @@ def pick_pdf_path(std: StandardInfo, files: list[dict]) -> Path | None:
             continue
         resolved = f.get("resolved_path")
         if resolved and Path(resolved).is_file():
-            return Path(resolved)
+            if filename_contains_std_id(Path(resolved).name, std.std_id or ""):
+                return Path(resolved)
+            continue
         found = find_pdf_on_disk(
             f.get("file_path") or "",
             f.get("file_name") or "",
-            std_id=std.std_id,
+            std_id=None,
         )
-        if found:
+        if found and filename_contains_std_id(found.name, std.std_id or ""):
             return found
     return None

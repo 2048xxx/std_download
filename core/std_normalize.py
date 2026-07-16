@@ -147,15 +147,76 @@ def pdf_path_variants(rel_path: str, file_name: str, std_id: str | None = None) 
     return paths
 
 
+def _normalize_year(year: str | None) -> str:
+    """统一年份：两位转为 20xx（如 05→2005），四位保持不变。"""
+    y = (year or "").strip()
+    if not y:
+        return ""
+    if len(y) == 2 and y.isdigit():
+        return f"20{y}"
+    return y
+
+
+def parse_std_parts(text: str) -> tuple[str, str, str] | None:
+    """解析标准号为 (前缀, 编号, 年份)。前缀无斜杠，如 GBT / GB / JBT。"""
+    raw = normalize_std_id(text or "")
+    if not raw or len(raw) < 3:
+        return None
+    compact = raw.replace("—", "-").replace("－", "-")
+    m = _STD_COMPACT.match(compact)
+    if m:
+        prefix = (m.group(1) + m.group(2)).upper()
+        return prefix, m.group(3), _normalize_year(m.group(4))
+    m2 = re.match(
+        r"^([A-Z]{1,6})([\d]+(?:\.\d+)*)(?:-(\d{2,4}))?$",
+        compact,
+    )
+    if m2:
+        return m2.group(1).upper(), m2.group(2), _normalize_year(m2.group(3))
+    return None
+
+
+def extract_std_token_from_filename(filename: str) -> str:
+    """从文件名提取前导标准号片段（去掉 _F_ 后缀与中文题名）。"""
+    stem = Path(filename or "").stem.upper()
+    stem = re.split(r"_[FTZX]_", stem, maxsplit=1)[0]
+    stem = re.split(r"[\u4e00-\u9fff]", stem, maxsplit=1)[0]
+    stem = normalize_std_id(stem)
+    stem = stem.rstrip("_- .")
+    return stem
+
+
+def file_std_identity_key(filename: str) -> str | None:
+    """同一标准不同文件名的去重键（如 GBT 12005.2-1989 与 GBT12005.2-1989）。"""
+    token = extract_std_token_from_filename(filename)
+    parts = parse_std_parts(token)
+    if not parts:
+        return None
+    prefix, num, year = parts
+    return f"{prefix}{num}-{year}" if year else f"{prefix}{num}"
+
+
 def filename_contains_std_id(filename: str, std_id: str) -> bool:
-    """判断文件名是否包含与标准号等价的编号（忽略 /、空格及 _F_ 等后缀）。"""
-    stem = Path(filename).stem.upper()
-    stem = re.sub(r"_[FTZX]_", "_", stem)
-    fn_norm = normalize_std_id(stem)
-    sid_norm = normalize_std_id(std_id)
-    if not sid_norm or len(sid_norm) < 4:
+    """判断文件名是否对应该标准号（前缀+编号必须一致；有年份则必须同年）。
+
+    避免仅按编号前缀匹配，把 1992/2005 旧版挂到 2026 新版，
+    或把 13748.8 误匹配到 13748.81。
+    """
+    sid = parse_std_parts(std_id)
+    if not sid:
         return False
-    return sid_norm in fn_norm
+    token = extract_std_token_from_filename(filename)
+    fid = parse_std_parts(token)
+    if not fid:
+        # 无法从文件名解析出标准号时，不做宽松子串匹配
+        return False
+    if sid[0] != fid[0] or sid[1] != fid[1]:
+        return False
+    # 标准带年份时，文件必须带相同年份
+    if sid[2]:
+        return bool(fid[2]) and sid[2] == fid[2]
+    # 标准无年份：允许任意年份文件（仅编号一致）
+    return True
 
 
 def std_id_glob_patterns(std_id: str) -> list[str]:
@@ -169,9 +230,19 @@ def std_id_glob_patterns(std_id: str) -> list[str]:
             seen.add(p)
             patterns.append(p)
 
-    add(f"*{norm}*.pdf")
+    parts = parse_std_parts(std_id)
     compact = norm.replace("—", "-").replace("－", "-")
     m = _STD_COMPACT.match(compact)
+    if parts and parts[2]:
+        # 带年份：只搜同年份，避免扫出历史版本
+        prefix, num, year = parts
+        add(f"*{norm}*.pdf")
+        add(f"*{prefix}*{num}*{year}*.pdf")
+        add(f"*{prefix} {num}*{year}*.pdf")
+        add(f"*{num}*{year}*.pdf")
+        return patterns
+
+    add(f"*{norm}*.pdf")
     if m:
         p1, p2, num, year = m.group(1), m.group(2), m.group(3), m.group(4) or ""
         add(f"*{p1}{p2}*{num}*.pdf")

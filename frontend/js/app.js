@@ -311,17 +311,42 @@
   function renderDetailHtml(item) {
     const catalogHref =
       currentMode === "tuangbiao" ? `/api/tuangbiao/${item.id}/download` : null;
-    const seen = new Set();
+    const stdIdentity = name => {
+      const stem = (name || "").replace(/\.pdf$/i, "");
+      const token = stem
+        .split(/_[FTZX]_/i)[0]
+        .split(/[\u4e00-\u9fff]/)[0]
+        .replace(/\s+/g, "")
+        .replace(/\//g, "")
+        .replace(/[—－]/g, "-")
+        .toUpperCase();
+      const m =
+        token.match(/^([A-Z]{1,6})([TZX])([\d]+(?:\.\d+)*)(?:-(\d{2,4}))?$/i) ||
+        token.match(/^([A-Z]{1,6})([\d]+(?:\.\d+)*)(?:-(\d{2,4}))?$/i);
+      if (!m) return null;
+      if (m[2] && /^\d/.test(m[2])) {
+        const year = m[3] ? (m[3].length === 2 ? `20${m[3]}` : m[3]) : "";
+        return year ? `${m[1]}${m[2]}-${year}` : `${m[1]}${m[2]}`;
+      }
+      const year = m[3] ? (m[3].length === 2 ? `20${m[3]}` : m[3]) : "";
+      return year ? `${m[1]}${m[2]}-${year}` : `${m[1]}${m[2]}`;
+    };
+    const fileScore = f =>
+      (f.exists ? 1 : 0) * 1e12 + (f.file_size || 0) + (f.id ? 1 : 0);
+    const seen = new Map();
     const files = (item.files || [])
-      .filter(f => {
-        const key = [
-          (f.resolved_path || f.file_path || "").toLowerCase(),
-          (f.file_name || "").toLowerCase(),
-        ].join("|");
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      })
+      .reduce((acc, f) => {
+        const name = f.file_name || "";
+        const key = stdIdentity(name) || `${(f.resolved_path || f.file_path || "").toLowerCase()}|${name.toLowerCase()}`;
+        const prev = seen.get(key);
+        if (prev === undefined) {
+          seen.set(key, acc.length);
+          acc.push(f);
+        } else if (fileScore(f) > fileScore(acc[prev])) {
+          acc[prev] = f;
+        }
+        return acc;
+      }, [])
       .map(f => {
         const href =
           catalogHref ||

@@ -422,17 +422,24 @@ def api_std_detail(base_id: int):
 
 @app.route("/api/download/<int:file_id>")
 def api_download_file(file_id: int):
+    from core.std_normalize import filename_contains_std_id
+
     rec = db.get_filepath_record(file_id)
     if not rec:
         return jsonify({"ok": False, "error": "文件记录不存在"}), 404
     std = db.get_by_id(rec["base_id"])
+    check_name = (rec.get("file_name") or "") or Path(rec.get("file_path") or "").name
+    if std and check_name and not filename_contains_std_id(check_name, std.std_id or ""):
+        return jsonify({"ok": False, "error": "文件与标准编号/年份不匹配，已阻止下载"}), 404
     found = find_pdf_on_disk(
         rec.get("file_path") or "",
         rec.get("file_name") or "",
-        std_id=std.std_id if std else None,
+        std_id=None,
     )
     if not found or not found.is_file():
         return jsonify({"ok": False, "error": "磁盘上未找到 PDF 文件"}), 404
+    if std and not filename_contains_std_id(found.name, std.std_id or ""):
+        return jsonify({"ok": False, "error": "文件与标准编号/年份不匹配，已阻止下载"}), 404
     return send_file(found, as_attachment=True, download_name=found.name)
 
 
